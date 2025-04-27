@@ -11,11 +11,14 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/codemirror.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/theme/material-darker.min.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.12/addon/hint/show-hint.min.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
 
   <style>
     html, body {
       margin: 0;
       padding: 0;
+      top: 10px;
       height: 100%;
       overflow: hidden;
       font-family: 'Fira Code', monospace;
@@ -27,21 +30,35 @@
       height: 100%;
       width: 100%;
     }
-
+    
     .editor-pane {
-      flex: 1;
+      width: 70%; /* Default width when preview is visible */
+      transition: width 0.3s ease; /* Smooth transition */
       display: flex;
       flex-direction: column;
       background: #1e1e1e;
+    }
+    
+    .editor-pane.full-width {
+      width: 100%; /* Full width when preview is hidden */
+    }
+
+    .preview-pane {
+      width: 30%; /* Default width for preview */
+      transition: width 0.3s ease; /* Smooth transition */
+      border-left: 2px solid #333;
+    }
+
+    .preview-pane.hidden {
+      display: none; /* Hide the preview when toggled */
     }
 
     .editor-toolbar {
       padding: 10px;
       background: #111;
       display: flex;
-      overflow-x: auto;
-      white-space: nowrap;
-      gap: 10px;
+      justify-content: space-between;
+      align-items: center;
     }
 
     .editor-toolbar button {
@@ -58,14 +75,42 @@
       background: #404040;
     }
 
+    .dropdown {
+      position: relative;
+      display: inline-block;
+    }
+
+    .dropdown-content {
+      display: none;
+      position: absolute;
+      background-color: #272727;
+      min-width: 160px;
+      box-shadow: 0px 8px 16px rgba(0, 0, 0, 0.2);
+      z-index: 1;
+      border-radius: 4px;
+    }
+
+    .dropdown:hover .dropdown-content {
+      display: block;
+    }
+
+    .dropdown-content button {
+      background: #272727;
+      color: white;
+      padding: 10px 18px;
+      border: none;
+      text-align: left;
+      width: 100%;
+      font-size: 16px;
+    }
+
+    .dropdown-content button:hover {
+      background: #404040;
+    }
+
     .editor-area {
       flex: 1;
       overflow: hidden;
-    }
-
-    .preview-pane {
-      flex: 1;
-      border-left: 2px solid #333;
     }
 
     iframe {
@@ -82,6 +127,11 @@
       background: #333;
     }
 
+    /* Hide resizer when preview is hidden */
+    .resizer.hidden {
+      display: none;
+    }
+
     /* Mobile Styles */
     @media (max-width: 768px) {
       .container {
@@ -93,7 +143,10 @@
       .editor-pane, .preview-pane {
         flex: none;
         height: 50%;
-        width: 100%;
+        width: 100% !important; /* Force full width on mobile */
+      }
+      .editor-pane.full-width {
+        height: 100%; /* Full height when preview is hidden */
       }
       .editor-toolbar button {
         font-size: 18px;
@@ -103,6 +156,73 @@
         font-size: 16px;
       }
     }
+    
+    /* Style for the toolbar */
+    .toolbar {
+      display: flex;
+      justify-content: space-between; /* Space out items */
+      align-items: center;
+      width: 100%;
+      padding: 10px;
+      background-color: #f1f1f1;
+    }
+
+    /* Controls container for better organization */
+    .controls-container {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    /* Device selector styling */
+    .device-selector {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-right: 10px;
+    }
+
+    .device-selector select {
+      padding: 5px;
+      background-color: #272727;
+      color: white;
+      border: none;
+      border-radius: 4px;
+    }
+
+    /* Align the zoom controls */
+    .zoom-controls {
+      display: flex;
+      gap: 5px; /* Space between the buttons */
+    }
+
+    /* Style for the zoom buttons */
+    .zoom-controls button {
+      padding: 5px 10px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    /* Action buttons */
+    .action-btn {
+      background: #272727;
+      border: none;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin: 0 5px;
+    }
+
+    .action-btn:hover {
+      background: #404040;
+    }
+
+    .CodeMirror {
+      height: 100%;
+      transition: font-size 0.2s ease;
+    }
   </style>
 </head>
 
@@ -111,16 +231,53 @@
 <div class="container">
   <div class="editor-pane">
     <div class="editor-toolbar">
-      <button onclick="downloadHTML()">Download</button>
-      <button onclick="loadTemplate('starter')">Starter</button>
-      <button onclick="loadTemplate('portfolio')">Portfolio</button>
-      <button onclick="loadTemplate('blog')">Blog</button>
-      <button onclick="loadTemplate('landing')">Landing Page</button>
-      <button onclick="loadTemplate('grid')">Grid Layout</button>
-      <button onclick="loadTemplate('contact')">Contact Form</button>
-      <button onclick="loadTemplate('error404')">404 Page</button>
-      <button onclick="clearEditor()">Clear</button>
+      <div>
+        <button onclick="downloadHTML()">Download</button>
+
+        <!-- Dropdown for Templates -->
+        <div class="dropdown">
+          <button class="dropbtn">Templates</button>
+          <div class="dropdown-content">
+            <button onclick="loadTemplate('starter')">Starter</button>
+            <button onclick="loadTemplate('portfolio')">Portfolio</button>
+            <button onclick="loadTemplate('blog')">Blog</button>
+            <button onclick="loadTemplate('landing')">Landing Page</button>
+            <button onclick="loadTemplate('grid')">Grid Layout</button>
+            <button onclick="loadTemplate('contact')">Contact Form</button>
+            <button onclick="loadTemplate('error404')">404 Page</button>
+          </div>
+        </div>
+
+        <button onclick="clearEditor()">Clear</button>
+      </div>
+      
+      <div class="controls-container">
+        <div class="device-selector">
+          <label for="devices" style="color: white;">Device:</label>
+          <select id="devices" onchange="updateDevicePreview()">
+            <option value="desktop">Desktop</option>
+            <option value="tablet">Tablet</option>
+            <option value="mobile">Mobile</option>
+          </select>
+        </div>
+        
+        <div class="zoom-controls">
+          <button onclick="zoomEditor('in')">+</button>
+          <button onclick="zoomEditor('out')">-</button>
+        </div>
+        
+        <button id="toggle-preview" onclick="togglePreview()">Hide Preview</button>
+        
+        <button class="action-btn" onclick="editor.undo()">
+          <i class="fas fa-undo"></i>
+        </button>
+        
+        <button class="action-btn" onclick="editor.redo()">
+          <i class="fas fa-redo"></i>
+        </button>
+      </div>
     </div>
+    
     <div class="editor-area">
       <textarea id="code"></textarea>
     </div>
@@ -183,6 +340,22 @@
     document.getElementById('preview').srcdoc = code;
     localStorage.setItem('mobileOptimizedCode', code);
   }
+  
+  function updateDevicePreview() {
+    const device = document.getElementById('devices').value;
+    const previewPane = document.querySelector('.preview-pane');
+
+    if (device === 'desktop') {
+      previewPane.style.width = '100%';
+      previewPane.style.maxWidth = '1200px';
+    } else if (device === 'tablet') {
+      previewPane.style.width = '80%';
+      previewPane.style.maxWidth = '768px';
+    } else if (device === 'mobile') {
+      previewPane.style.width = '100%';
+      previewPane.style.maxWidth = '480px';
+    }
+  }
 
   editor.on('change', updatePreview);
 
@@ -216,17 +389,177 @@
     starter: `<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Starter</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>My Website</title>
   <style>
-    body { font-family: Arial; background: #fafafa; text-align: center; padding: 40px; }
+    body {
+      font-family: Arial, sans-serif; /* Change the main font of your site */
+      margin: 0;
+      background-color: #ffffff; /* Set the background color for the page */
+    }
+
+    /* Header with logo and nav links */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 20px;
+      background-color: #222; /* Change the background color of the header */
+      color: #fff; /* Color of the text/logo and nav links in the header */
+    }
+
+    .logo {
+      font-size: 24px; /* Size of the logo text */
+      font-weight: bold; /* Make the logo bold */
+    }
+
+    /* Horizontal nav links in the header */
+    nav {
+      display: flex;
+      gap: 15px; /* Space between nav items */
+    }
+
+    nav a {
+      color: #fff; /* Color of nav links */
+      text-decoration: none; /* Removes underline from links */
+    }
+
+    /* Hamburger menu for mobile view */
+    .hamburger {
+      display: none; /* Hidden by default; shown on smaller screens */
+      flex-direction: column;
+      cursor: pointer; /* Cursor becomes pointer on hover */
+    }
+
+    .hamburger div {
+      width: 25px;
+      height: 3px;
+      background-color: #fff; /* Color of hamburger bars */
+      margin: 4px 0;
+    }
+
+    /* Extra nav buttons below the header */
+    .nav-buttons {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      padding: 15px;
+      background-color: #f0f0f0; /* Background color for button area */
+      flex-wrap: wrap; /* Makes buttons wrap on smaller screens */
+    }
+
+    .nav-buttons a {
+      background-color: #007BFF; /* Button background color */
+      color: white; /* Button text color */
+      padding: 10px 20px;
+      text-decoration: none;
+      border-radius: 6px; /* Rounded corners */
+      font-weight: bold;
+      transition: background-color 0.3s;
+    }
+
+    .nav-buttons a:hover {
+      background-color: #0056b3; /* Darker color when hovering */
+    }
+
+    /* Main content area */
+    .content {
+      padding: 20px; /* Space around main content */
+    }
+
+    /* Text box styling for clean content sections */
+    .text-box {
+      background-color: #f4f4f4; /* Box background color */
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid #ccc; /* Box border */
+      border-radius: 8px; /* Rounded corners for smooth look */
+      box-shadow: 2px 2px 8px rgba(0,0,0,0.1); /* Light shadow for depth */
+    }
+
+    /* Responsive styles for smaller screens */
+    @media (max-width: 768px) {
+      nav {
+        display: none; /* Hide nav links on mobile by default */
+        flex-direction: column;
+        background: #333; /* Dropdown menu background */
+        position: absolute;
+        top: 60px;
+        right: 20px;
+        padding: 10px;
+      }
+
+      nav.show {
+        display: flex; /* Show nav when hamburger is clicked */
+      }
+
+      .hamburger {
+        display: flex; /* Show hamburger icon on mobile */
+      }
+    }
   </style>
 </head>
 <body>
-  <h1>Hello World!</h1>
+
+  <!-- HEADER: Contains site logo and main navigation -->
+  <header>
+    <div class="logo">MySite</div> <!-- Change this text to your site's name or logo -->
+
+    <!-- HAMBURGER MENU ICON (for mobile) -->
+    <div class="hamburger" onclick="toggleMenu()">
+      <div></div>
+      <div></div>
+      <div></div>
+    </div>
+
+    <!-- NAVIGATION LINKS (header) -->
+    <nav id="navMenu">
+      <a href="#">Home</a>        <!-- Change the links and their destinations -->
+      <a href="#">About</a>
+      <a href="#">Services</a>
+      <a href="#">Contact</a>
+      <a href="#">Extra</a>
+    </nav>
+  </header>
+
+  <!-- NAV BUTTONS SECTION BELOW HEADER -->
+  <div class="nav-buttons">
+    <a href="#">Dashboard</a>   <!-- Add or rename buttons as needed -->
+    <a href="#">Tools</a>
+    <a href="#">Settings</a>
+    <a href="#">Help</a>
+    <a href="#">Extra</a>
+  </div>
+
+  <!-- MAIN CONTENT AREA -->
+  <main class="content">
+    <!-- TEXT BOX 1 -->
+    <section class="text-box">
+      <h1>Welcome to My Website</h1> <!-- Main heading -->
+      <p>This is a section where you can put an introduction or main content.</p>
+    </section>
+
+    <!-- TEXT BOX 2 -->
+    <section class="text-box">
+      <h2>Another Section</h2>
+      <p>Use more sections like this for features, info, or anything else.</p>
+    </section>
+
+    <!-- TEXT BOX 3 -->
+    <section class="text-box">
+      <h2>More Content</h2>
+      <p>You can keep adding text-box sections to build your page layout.</p>
+    </section>
+  </main>
+
+  <!-- JAVASCRIPT: TOGGLING THE NAV ON MOBILE -->
   <script>
-    console.log('Starter Loaded');
+    function toggleMenu() {
+      document.getElementById('navMenu').classList.toggle('show');
+    }
   <\/script>
+
 </body>
 </html>`,
     portfolio: `<!DOCTYPE html>
@@ -341,20 +674,21 @@
 <body>
   <div class="form-container">
     <h2>Contact Us</h2>
-    <form>
-      <input type="text" id="name" placeholder="Your Name" required>
-      <input type="email" id="email" placeholder="Your Email" required>
-      <textarea id="message" rows="4" placeholder="Your Message" required></textarea>
+    <form action="#" method="POST">
+      <input type="text" name="name" placeholder="Your Name" required>
+      <input type="email" name="email" placeholder="Your Email" required>
+      <textarea name="message" placeholder="Your Message" rows="5" required></textarea>
       <button type="submit">Send Message</button>
     </form>
   </div>
 </body>
 </html>`,
+
     error404: `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>404 - Not Found</title>
+  <title>404 - Page Not Found</title>
   <style>
     body { font-family: Arial, sans-serif; background-color: #f5f5f5; margin: 0; padding: 0; text-align: center; }
     .error-container { padding: 100px 20px; }
@@ -381,6 +715,60 @@
     }
   }
 
+  // Initial font size
+  let currentFontSize = 14;
+
+  // Function to zoom the editor
+  function zoomEditor(direction) {
+    const editorElement = document.querySelector('.CodeMirror');
+    
+    // Adjust font size depending on the direction
+    if (direction === 'in') {
+      currentFontSize += 2; // Increase the font size by 2px
+    } else if (direction === 'out') {
+      currentFontSize -= 2; // Decrease the font size by 2px
+    }
+
+    // Set minimum and maximum font size limits
+    currentFontSize = Math.max(10, Math.min(24, currentFontSize));
+
+    // Apply the new font size to the CodeMirror editor
+    editorElement.style.fontSize = currentFontSize + 'px';
+  }
+
+  // Function to toggle preview pane
+  function togglePreview() {
+    const previewPane = document.querySelector('.preview-pane');
+    const editorPane = document.querySelector('.editor-pane');
+    const resizer = document.querySelector('.resizer');
+    const toggleBtn = document.getElementById('toggle-preview');
+    
+    // Toggle the editor to full width and hide preview
+    if (previewPane.classList.contains('hidden')) {
+      // Show the preview
+      previewPane.classList.remove('hidden');
+      editorPane.classList.remove('full-width');
+      resizer.classList.remove('hidden');
+      toggleBtn.innerText = 'Hide Preview';
+      
+      // Reset the editor width to default (70%)
+      editorPane.style.width = '70%';
+      // Refresh the editor to adjust to new width
+      editor.refresh();
+    } else {
+      // Hide the preview
+      previewPane.classList.add('hidden');
+      editorPane.classList.add('full-width');
+      resizer.classList.add('hidden');
+      toggleBtn.innerText = 'Show Preview';
+      
+      // Set the editor to full width
+      editorPane.style.width = '100%';
+      // Refresh the editor to adjust to new width
+      editor.refresh();
+    }
+  }
+
   // CodeMirror Resizer (for mobile responsiveness)
   const dragbar = document.getElementById('dragbar');
   const editorPane = document.querySelector('.editor-pane');
@@ -395,8 +783,23 @@
     function onMouseMove(e) {
       if (isDragging) {
         const newWidth = startWidth + (e.clientX - startX);
-        editorPane.style.width = `${newWidth}px`;
-        previewPane.style.width = `${window.innerWidth - newWidth - dragbar.offsetWidth}px`;
+        const minWidth = 100; // Minimum width for editor pane
+        const maxWidth = window.innerWidth - 100; // Maximum width (leaving room for preview)
+        
+        // Apply constraints
+        const constrainedWidth = Math.max(minWidth, Math.min(maxWidth, newWidth));
+        const containerWidth = window.innerWidth - dragbar.offsetWidth;
+        
+        // Calculate percentage of total width
+        const editorPctWidth = (constrainedWidth / containerWidth) * 100;
+        const previewPctWidth = 100 - editorPctWidth;
+        
+        // Apply percentage-based widths
+        editorPane.style.width = `${editorPctWidth}%`;
+        previewPane.style.width = `${previewPctWidth}%`;
+        
+        // Force editor refresh to handle the size change
+        editor.refresh();
       }
     }
 
@@ -409,7 +812,15 @@
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
   });
+
+  // Handle window resize to ensure editor reflow
+  window.addEventListener('resize', () => {
+    // Small delay to make sure the resize is complete
+    setTimeout(() => {
+      editor.refresh();
+    }, 100);
+  });
 </script>
 
 </body>
-</html>
+  </html>
